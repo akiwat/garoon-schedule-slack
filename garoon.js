@@ -85,7 +85,7 @@ module.exports = function (config) {
                                     headers: { 'Content-Type': 'application/json' },
                                     json: {
                                         channel: '@' + targetUser.slackuser,
-                                        text: util.format('<@%s> さま。%sより「%s」が 始まります。場所・設備は「%s」です', targetUser.slackuser, moment(row.start).add(9, 'h').format('HH時mm分'), row.title, resolved_facilities.length != 0 ? resolved_facilities : 'なし')
+                                        text: util.format('<@%s> さま。%sより「%s」が 始まります。場所・設備は「%s」です', targetUser.slackuser, moment(row.start).format('HH時mm分'), row.title, resolved_facilities.length != 0 ? resolved_facilities : 'なし')
                                     }
                                 };
                                 request.post(options, function (err, res, body) {
