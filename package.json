@@ -1,15 +1,18 @@
-'use strict';
-var config = require('./config.js');
-var cron = require('cron').CronJob;
-var garoon = require('./garoon.js');
-
-var job = new cron({
-    cronTime: config.cronTime,
-    onTick: function () {
-        garoon(config);
-    },
-    start: false,
-    timeZone: 'Asia/Tokyo'
-});
-console.log(('Starting the cron job'));
-job.start();
+{
+  "name": "garoon",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "async": "^2.1.4",
+    "cron": "^1.2.1",
+    "moment": "^2.17.1",
+    "moment-timezone": "^0.5.11",
+    "request": "^2.79.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
