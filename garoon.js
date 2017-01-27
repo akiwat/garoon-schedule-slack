@@ -64,6 +64,10 @@ module.exports = function (config) {
                                 if (row.allDay === true) {
                                     return next();
                                 }
+                                //skip past schedule
+                                if (moment(row.start).diff(now) < 0) {
+                                    return next();
+                                }
                                 console.log(row);
                                 //設備のidを名前解決する
                                 var resolved_facilities = _.map(row.facilities, function (facility_id) {
