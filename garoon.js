@@ -43,7 +43,7 @@ module.exports = function (config) {
         },
         function (facilities, next) {
             var now = moment();
-            var fiveMinutesAfter = now.clone().add(5, 'm');
+            var fiveMinutesAfter = now.clone().add(6, 'm');
 
             async.eachSeries(config.targetUsers,
                 function (targetUser, next) {
