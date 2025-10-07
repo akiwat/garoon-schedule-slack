@@ -4,41 +4,43 @@ var _ = require('lodash');
 var util = require('util');
 var async = require('async');
 var moment = require('moment');
-var request = require('request');
-request = request.defaults({ jar: true });
+var axios = require('axios');
+var tough = require('tough-cookie');
+var { wrapper } = require('@3846masa/axios-cookiejar-support');
+
+// クッキージャーを設定
+const cookieJar = new tough.CookieJar();
+const client = wrapper(axios.create({ jar: cookieJar }));
 
 module.exports = function (config) {
     async.waterfall([
         //login
         function (next) {
-            request.post({
-                url: config.garoonLoginUrl,
-                json: true,
-                body: { username: config.user.username, password: config.user.password }
-            }, function (err, res, body) {
-                if (err != null) {
-                    return next(err);
-                } else if (res.statusCode !== 200 && res.statusCode !== 304) {
+            client.post(config.garoonLoginUrl,
+                { username: config.user.username, password: config.user.password }
+            ).then(function (res) {
+                if (res.status !== 200 && res.status !== 304) {
                     return next(res);
                 } else {
-                    console.log(body);
+                    console.log(res.data);
                     return next();
                 }
+            }).catch(function (err) {
+                return next(err);
             });
         },
         //get facilities
         function (next) {
-            request.post({
-                url: config.garoonFacilityUrl
-            }, function (err, res, body) {
-                if (err != null) {
-                    return next(err);
-                } else if (res.statusCode !== 200 && res.statusCode !== 304) {
+            client.post(config.garoonFacilityUrl)
+            .then(function (res) {
+                if (res.status !== 200 && res.status !== 304) {
                     return next(res);
                 } else {
-                    // console.log(body);
-                    return next(null, JSON.parse(body));
+                    // console.log(res.data);
+                    return next(null, res.data);
                 }
+            }).catch(function (err) {
+                return next(err);
             });
         },
         function (facilities, next) {
@@ -48,18 +50,14 @@ module.exports = function (config) {
             async.eachSeries(config.targetUsers,
                 function (targetUser, next) {
                     console.log(targetUser.slackuser);
-                    request.post({
-                        url: config.garoonScheduleUrl,
-                        json: true,
-                        body: { start: now.utc().format(), end: fiveMinutesAfter.utc().format(), userId: targetUser.garoon_id }
-                    }, function (err, res, body) {
-                        if (err != null) {
-                            return next(err);
-                        } else if (res.statusCode !== 200 && res.statusCode !== 304) {
+                    client.post(config.garoonScheduleUrl,
+                        { start: now.utc().format(), end: fiveMinutesAfter.utc().format(), userId: targetUser.garoon_id }
+                    ).then(function (res) {
+                        if (res.status !== 200 && res.status !== 304) {
                             return next(res);
                         } else {
-                            // console.log(body);
-                            async.eachSeries(body.rows, function (row, next) {
+                            // console.log(res.data);
+                            async.eachSeries(res.data.rows, function (row, next) {
                                 // skip allday schedule
                                 if (row.allDay === true) {
                                     return next();
@@ -80,24 +78,24 @@ module.exports = function (config) {
                                     }
                                 })
 
-                                var options = {
-                                    uri: config.slackWebhookUrl,
-                                    headers: { 'Content-Type': 'application/json' },
-                                    json: {
-                                        channel: '@' + targetUser.slackuser,
-                                        text: util.format('<@%s> さま。%sより「%s」が 始まります。場所・設備は「%s」です', targetUser.slackuser, moment(row.start).format('HH時mm分'), row.title, resolved_facilities.length != 0 ? resolved_facilities : 'なし')
-                                    }
-                                };
-                                request.post(options, function (err, res, body) {
-                                    if (err != null) {
-                                        console.log(err);
-                                    }
+                                client.post(config.slackWebhookUrl, {
+                                    channel: '@' + targetUser.slackuser,
+                                    text: util.format('<@%s> さま。%sより「%s」が 始まります。場所・設備は「%s」です', targetUser.slackuser, moment(row.start).format('HH時mm分'), row.title, resolved_facilities.length != 0 ? resolved_facilities : 'なし')
+                                }, {
+                                    headers: { 'Content-Type': 'application/json' }
+                                }).then(function () {
+                                    return next();
+                                }).catch(function (err) {
+                                    console.log(err);
                                     return next();
                                 });
 
+                            }, function (err) {
+                                return next(err);
                             });
-                            return next();
                         }
+                    }).catch(function (err) {
+                        return next(err);
                     });
                 }, function (err) {
                     if (err != null) {
