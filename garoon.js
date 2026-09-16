@@ -78,12 +78,22 @@ module.exports = function (config) {
                                     }
                                 })
 
-                                client.post(config.slackWebhookUrl, {
-                                    channel: '@' + targetUser.slackuser,
+                                // Webhook は実行時の channel 上書きを無視するため DM に出せない。
+                                // Bot Token で chat.postMessage を直接叩く。
+                                // クッキージャーは Garoon セッション用なので素の axios を使う
+                                axios.post(config.slackPostMessageUrl, {
+                                    channel: targetUser.slackuser,
                                     text: util.format('<@%s> さま。%sより「%s」が 始まります。場所・設備は「%s」です', targetUser.slackuser, moment(row.start).format('HH時mm分'), row.title, resolved_facilities.length != 0 ? resolved_facilities : 'なし')
                                 }, {
-                                    headers: { 'Content-Type': 'application/json' }
-                                }).then(function () {
+                                    headers: {
+                                        'Content-Type': 'application/json; charset=utf-8',
+                                        'Authorization': 'Bearer ' + config.slackBotToken
+                                    }
+                                }).then(function (res) {
+                                    // chat.postMessage は失敗しても HTTP 200 を返す
+                                    if (res.data.ok !== true) {
+                                        console.log('slack error: ' + res.data.error);
+                                    }
                                     return next();
                                 }).catch(function (err) {
                                     console.log(err);
